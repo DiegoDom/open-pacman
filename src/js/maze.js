@@ -2,12 +2,13 @@
 // Laberinto 28x31 fiel a la geometria del nivel 1 de Pac-Man.
 // Se escribe como 31 strings de 28 chars (legible) y se parsea a numeros.
 //   '#' pared(1) · '.' dot(2) · ' ' vacio transitable(0) · '-' puerta pen(3)
+//   'O' pellet poder(4)
 // Coordenadas: celda (x,y), origen arriba-izquierda. x in [0,27], y in [0,30].
 // Simetrico respecto al eje vertical central (entre cols 13 y 14).
 
 const MAZE_STR = [
   '############################', // 0  borde
-  '#............##............#', // 1
+  '#O...........##...........O#', // 1  pellets (1,1) y (26,1)
   '#.####.#####.##.#####.####.#', // 2
   '#.####.#####.##.#####.####.#', // 3
   '#.####.#####.##.#####.####.#', // 4
@@ -35,7 +36,7 @@ const MAZE_STR = [
   '#......##....##....##......#', // 26
   '#.##########.##.##########.#', // 27
   '#.##########.##.##########.#', // 28
-  '#..........................#', // 29
+  '#O........................O#', // 29  pellets (1,29) y (26,29)
   '############################', // 30  borde
 ];
 
@@ -43,6 +44,7 @@ function parseTile( ch ) {
   if ( ch === '#' ) return 1;
   if ( ch === '.' ) return 2;
   if ( ch === '-' ) return 3;
+  if ( ch === 'O' ) return 4;
   return 0; // espacio = vacio transitable
 }
 
