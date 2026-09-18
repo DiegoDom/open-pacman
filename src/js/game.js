@@ -169,8 +169,18 @@ function decideGhost( game, g ) {
     } else {
       g.dir = pickAway( choices, g, px, py );
     }
+  } else if ( g.kind === 'clever' ) {
+    // Objetivo: punto 2 celdas delante de Pac-Man con el vector desde el
+    // hunter duplicado (hunter + 2 * (PacManDelante - hunter)).
+    const d = DIRS[ p.dir ];
+    const aheadX = Math.round( p.x ) + d.x * 2;
+    const aheadY = Math.round( p.y ) + d.y * 2;
+    const hunter = game.ghosts.find( ( gh ) => gh.kind === 'hunter' );
+    const tx = Math.round( hunter.x ) + 2 * ( aheadX - Math.round( hunter.x ) );
+    const ty = Math.round( hunter.y ) + 2 * ( aheadY - Math.round( hunter.y ) );
+    g.dir = pickToward( choices, g, tx, ty );
   } else {
-    // hunter (y clever, hasta el paso 3).
+    // hunter
     const px = Math.round( p.x );
     const py = Math.round( p.y );
     g.dir = pickToward( choices, g, px, py );
