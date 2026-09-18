@@ -22,6 +22,9 @@ const GHOST_RELEASE_INTERVAL = 60;
 // Duracion del poder (~6 s a 60 fps). 360 = POWER_FRAMES.
 const POWER_FRAMES = 360;
 
+// Puntuacion escalada por racha de fantasmas comidos con un mismo poder.
+const GHOST_POINTS = [ 200, 400, 800, 1600 ];
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -55,6 +58,7 @@ function createGame() {
       kind: g.kind,
       leaving: false,
       releaseTicks: i * GHOST_RELEASE_INTERVAL,
+      home: { x: g.x, y: g.y },
     } ) ),
   };
 }
@@ -257,6 +261,9 @@ function resetPositions( game ) {
   p.dir = 'left';
   p.nextDir = null;
   game.ticks = 0;
+  game.power.active = false;
+  game.power.framesLeft = 0;
+  game.power.chain = 0;
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
@@ -274,19 +281,33 @@ function update( game ) {
   game.ticks++;
   if ( game.power.active ) {
     game.power.framesLeft--;
-    if ( game.power.framesLeft <= 0 ) game.power.active = false;
+    if ( game.power.framesLeft <= 0 ) {
+      game.power.active = false;
+      game.power.chain = 0;
+    }
   }
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
+      if ( game.power.active ) {
+        // Comer fantasma vulnerable: racha, teleport a su celda de la pen y
+        // re-salida ~1 s despues por la puerta.
+        game.score += GHOST_POINTS[ Math.min( game.power.chain, 3 ) ];
+        game.power.chain++;
+        g.x = g.home.x;
+        g.y = g.home.y;
+        g.leaving = false;
+        g.releaseTicks = game.ticks + GHOST_RELEASE_INTERVAL;
+      } else {
+        game.lives--;
+        if ( game.lives <= 0 ) {
+          game.state = 'lost';
+          return;
+        }
+        resetPositions( game );
       }
-      resetPositions( game );
       break;
     }
   }
