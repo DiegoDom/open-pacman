@@ -99,7 +99,7 @@ function drawPacman( ctx, p, frame ) {
   ctx.fill();
 }
 
-function drawGhost( ctx, g, color ) {
+function drawGhost( ctx, g, color, power ) {
   const { cx, cy } = cellCenter( g.x, g.y );
   const r = TILE / 2 - 1;
   const top = cy - r;
@@ -107,7 +107,13 @@ function drawGhost( ctx, g, color ) {
   const left = cx - r;
   const right = cx + r;
 
-  ctx.fillStyle = color;
+  // Poder activo: cuerpo azul, con parpadeo azul/blanco en el ultimo segundo.
+  let body = color;
+  const blinking = power && power.active && power.framesLeft < 60;
+  if ( power && power.active ) body = '#2121ff';
+  if ( blinking && Math.floor( power.framesLeft / 8 ) % 2 === 0 ) body = '#ffffff';
+
+  ctx.fillStyle = body;
   ctx.beginPath();
   ctx.arc( cx, cy - 1, r, Math.PI, 0, false ); // cabeza
   ctx.lineTo( right, bottom );
@@ -159,7 +165,7 @@ function draw( ctx, game, frame ) {
   drawDoor( ctx, grid );
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000' ) );
+  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000', game.power ) );
   drawHUD( ctx, game, W );
 }
 
