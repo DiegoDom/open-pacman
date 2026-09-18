@@ -110,6 +110,40 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+function manhattan( ax, ay, bx, by ) {
+  return Math.abs( ax - bx ) + Math.abs( ay - by );
+}
+
+// Elige la direccion de `choices` que minimiza la distancia Manhattan al target.
+function pickToward( choices, g, tx, ty ) {
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const dist = manhattan( g.x + d.x, g.y + d.y, tx, ty );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  return best;
+}
+
+// Elige la direccion de `choices` que maximiza la distancia Manhattan al target.
+function pickAway( choices, g, tx, ty ) {
+  let best = choices[ 0 ];
+  let bestDist = -Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const dist = manhattan( g.x + d.x, g.y + d.y, tx, ty );
+    if ( dist > bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  return best;
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
   const p = game.pacman;
@@ -120,24 +154,36 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
+  if ( g.kind === 'ambusher' ) {
+    // Apunta 2 celdas en la direccion actual de Pac-Man.
+    const d = DIRS[ p.dir ];
+    const tx = Math.round( p.x ) + d.x * 2;
+    const ty = Math.round( p.y ) + d.y * 2;
+    g.dir = pickToward( choices, g, tx, ty );
+  } else if ( g.kind === 'shy' ) {
     const px = Math.round( p.x );
     const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
+    // Lejos (>8) vaga al azar; cerca huye maximizando la distancia.
+    if ( manhattan( Math.round( g.x ), Math.round( g.y ), px, py ) > 8 ) {
+      g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    } else {
+      g.dir = pickAway( choices, g, px, py );
     }
-    g.dir = best;
+  } else if ( g.kind === 'clever' ) {
+    // Objetivo: punto 2 celdas delante de Pac-Man con el vector desde el
+    // hunter duplicado (hunter + 2 * (PacManDelante - hunter)).
+    const d = DIRS[ p.dir ];
+    const aheadX = Math.round( p.x ) + d.x * 2;
+    const aheadY = Math.round( p.y ) + d.y * 2;
+    const hunter = game.ghosts.find( ( gh ) => gh.kind === 'hunter' );
+    const tx = Math.round( hunter.x ) + 2 * ( aheadX - Math.round( hunter.x ) );
+    const ty = Math.round( hunter.y ) + 2 * ( aheadY - Math.round( hunter.y ) );
+    g.dir = pickToward( choices, g, tx, ty );
   } else {
-    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    // hunter
+    const px = Math.round( p.x );
+    const py = Math.round( p.y );
+    g.dir = pickToward( choices, g, px, py );
   }
 }
 
