@@ -13,6 +13,12 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+// Punto de salida de la pen: centro de la celda justo encima de la puerta.
+const DOOR_EXIT = { x: 13.5, y: 11 };
+
+// Frames entre la salida de cada fantasma (~1 s a 60 fps).
+const GHOST_RELEASE_INTERVAL = 60;
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -27,6 +33,7 @@ function createGame() {
     state: 'start',
     score: 0,
     lives: 3,
+    ticks: 0,
     dotsRemaining: dots,
     grid,
     pacman: {
@@ -36,12 +43,14 @@ function createGame() {
       nextDir: null,
       speed: PACMAN_SPEED,
     },
-    ghosts: GHOST_STARTS.map( ( g ) => ( {
+    ghosts: GHOST_STARTS.map( ( g, i ) => ( {
       x: g.x,
       y: g.y,
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      leaving: false,
+      releaseTicks: i * GHOST_RELEASE_INTERVAL,
     } ) ),
   };
 }
@@ -154,6 +163,15 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
+  if ( g.leaving ) {
+    if ( Math.round( g.y ) <= 11 ) {
+      g.leaving = false;
+    } else {
+      g.dir = pickToward( choices, g, DOOR_EXIT.x, DOOR_EXIT.y );
+      return;
+    }
+  }
+
   if ( g.kind === 'ambusher' ) {
     // Apunta 2 celdas en la direccion actual de Pac-Man.
     const d = DIRS[ p.dir ];
@@ -191,6 +209,12 @@ function moveGhost( game, g ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
+  // Congelado en su celda hasta que toca salir de la pen.
+  if ( !g.leaving ) {
+    if ( game.ticks >= g.releaseTicks ) g.leaving = true;
+    else return;
+  }
+
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
@@ -210,10 +234,13 @@ function resetPositions( game ) {
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
+  game.ticks = 0;
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.leaving = false;
+    g.releaseTicks = i * GHOST_RELEASE_INTERVAL;
   } );
 }
 
@@ -222,6 +249,7 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  game.ticks++;
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
