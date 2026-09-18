@@ -19,6 +19,9 @@ const DOOR_EXIT = { x: 13.5, y: 11 };
 // Frames entre la salida de cada fantasma (~1 s a 60 fps).
 const GHOST_RELEASE_INTERVAL = 60;
 
+// Duracion del poder (~6 s a 60 fps). 360 = POWER_FRAMES.
+const POWER_FRAMES = 360;
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -35,6 +38,7 @@ function createGame() {
     lives: 3,
     ticks: 0,
     dotsRemaining: dots,
+    power: { active: false, framesLeft: 0, chain: 0 },
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -114,6 +118,9 @@ function movePacman( game ) {
       grid[ p.y ][ p.x ] = 0;
       game.score += 50;
       game.dotsRemaining--;
+      game.power.active = true;
+      game.power.framesLeft = POWER_FRAMES;
+      game.power.chain = 0;
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -178,6 +185,14 @@ function decideGhost( game, g ) {
     }
   }
 
+  // Poder activo: todos huyen de Pac-Man, ignorando su kind.
+  if ( game.power.active ) {
+    const px = Math.round( p.x );
+    const py = Math.round( p.y );
+    g.dir = pickAway( choices, g, px, py );
+    return;
+  }
+
   if ( g.kind === 'ambusher' ) {
     // Apunta 2 celdas en la direccion actual de Pac-Man.
     const d = DIRS[ p.dir ];
@@ -229,8 +244,9 @@ function moveGhost( game, g ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  const speed = game.power.active ? GHOST_SPEED / 2 : g.speed;
+  g.x += d.x * speed;
+  g.y += d.y * speed;
   wrapTunnel( g, width );
 }
 
@@ -256,6 +272,10 @@ function collides( a, b ) {
 
 function update( game ) {
   game.ticks++;
+  if ( game.power.active ) {
+    game.power.framesLeft--;
+    if ( game.power.framesLeft <= 0 ) game.power.active = false;
+  }
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
