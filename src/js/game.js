@@ -13,6 +13,9 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+// Punto de salida de la pen: centro de la celda justo encima de la puerta.
+const DOOR_EXIT = { x: 13.5, y: 11 };
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -154,6 +157,15 @@ function decideGhost( game, g ) {
   );
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
+
+  if ( g.leaving ) {
+    if ( Math.round( g.y ) <= 11 ) {
+      g.leaving = false;
+    } else {
+      g.dir = pickToward( choices, g, DOOR_EXIT.x, DOOR_EXIT.y );
+      return;
+    }
+  }
 
   if ( g.kind === 'ambusher' ) {
     // Apunta 2 celdas en la direccion actual de Pac-Man.
